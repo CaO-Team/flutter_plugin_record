@@ -235,8 +235,15 @@ public final class AudioHandler extends Handler {
 //                Log.d(TAG, "BUFFER LIMIT IS " + buffer.limit() + "\n\t\t\tCAPACITY IS" + buffer.capacity());
                 long length = 0;
                 boolean turn = false;
+
+                int minRecBufBytes = bufferSize;
+                int recBufferByteSize = minRecBufBytes*2;
+                byte[] recBuffer = new byte[recBufferByteSize];
+                int frameByteSize = minRecBufBytes/2;
+                int sampleBytes = frameByteSize;
+                int recBufferBytePtr = 0;
                 while (isRecording && mRecord.getRecordingState() == AudioRecord.RECORDSTATE_RECORDING) {
-                    int read = mRecord.read(buffer, 0, buffer.length);
+                    int read = mRecord.read(buffer, recBufferBytePtr, buffer.length);
                     if (read < 0) {
                         Log.e(TAG, read == -3 ? "ERROR_INVALID_OPERATION"
                                 : read == -2 ? "ERROR_BAD_VALUE"
@@ -244,6 +251,35 @@ public final class AudioHandler extends Handler {
                                 : String.valueOf(read));
                         if (listener != null) listener.onError(read);
                         break;
+                    }
+                    //增加音量 https://stackoverflow.com/questions/26088427/increase-volume-output-of-recorded-audio
+                    int i = 0;
+                    while ( i < read ) {
+                        float sample = (float)( buffer[recBufferBytePtr+i  ] & 0xFF
+                                | buffer[recBufferBytePtr+i+1] << 8 );
+
+                        // THIS is the point were the work is done:
+                        // Increase level by about 6dB:
+                        sample *= 2;
+                        // Or increase level by 20dB:
+                        // sample *= 10;
+                        // Or if you prefer any dB value, then calculate the gain factor outside the loop
+                        // float gainFactor = (float)Math.pow( 10., dB / 20. );    // dB to gain factor
+                        // sample *= gainFactor;
+
+                        // Avoid 16-bit-integer overflow when writing back the manipulated data:
+                        if ( sample >= 32767f ) {
+                            buffer[recBufferBytePtr+i  ] = (byte)0xFF;
+                            buffer[recBufferBytePtr+i+1] =       0x7F;
+                        } else if ( sample <= -32768f ) {
+                            buffer[recBufferBytePtr+i  ] =       0x00;
+                            buffer[recBufferBytePtr+i+1] = (byte)0x80;
+                        } else {
+                            int s = (int)( 0.5f + sample );  // Here, dithering would be more appropriate
+                            buffer[recBufferBytePtr+i  ] = (byte)(s & 0xFF);
+                            buffer[recBufferBytePtr+i+1] = (byte)(s >> 8 & 0xFF);
+                        }
+                        i += 2;
                     }
                     if (out != null) {
                         out.write(buffer, 0, read);
