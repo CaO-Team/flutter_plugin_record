@@ -8,10 +8,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import cafe.adriel.androidaudioconverter.AndroidAudioConverter
-import cafe.adriel.androidaudioconverter.callback.IConvertCallback
-import cafe.adriel.androidaudioconverter.callback.ILoadCallback
-import cafe.adriel.androidaudioconverter.model.AudioFormat
+
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -113,27 +110,27 @@ class FlutterPluginRecordPlugin : FlutterPlugin, MethodCallHandler, ActivityAwar
 
 
     //初始化wav转 MP3
-    private fun initWavToMp3(){
-        AndroidAudioConverter.load(activity.applicationContext, object : ILoadCallback {
-            override fun onSuccess() {
-                // Great!
-                Log.d("android", "  AndroidAudioConverter onSuccess")
-            }
-
-            override fun onFailure(error: Exception) {
-                // FFmpeg is not supported by device
-                Log.d("android", "  AndroidAudioConverter onFailure")
-            }
-        })
-
-    }
+//    private fun initWavToMp3(){
+//        AndroidAudioConverter.load(activity.applicationContext, object : ILoadCallback {
+//            override fun onSuccess() {
+//                // Great!
+//                Log.d("android", "  AndroidAudioConverter onSuccess")
+//            }
+//
+//            override fun onFailure(error: Exception) {
+//                // FFmpeg is not supported by device
+//                Log.d("android", "  AndroidAudioConverter onFailure")
+//            }
+//        })
+//
+//    }
 
     private fun initRecord() {
         if (audioHandler != null) {
             audioHandler?.release()
             audioHandler = null
         }
-        audioHandler = AudioHandler.createHandler(AudioHandler.Frequency.F_22050)
+        audioHandler = AudioHandler.createHandler(AudioHandler.Frequency.F_44100)
 
         Log.d("android voice  ", "init")
         val id = call.argument<String>("id")
@@ -266,7 +263,7 @@ class FlutterPluginRecordPlugin : FlutterPlugin, MethodCallHandler, ActivityAwar
     private fun initRecordMp3(){
         recordMp3=true
         checkPermission()
-        initWavToMp3()
+//        initWavToMp3()
     }
 
     private fun checkPermission() {
@@ -302,29 +299,40 @@ class FlutterPluginRecordPlugin : FlutterPlugin, MethodCallHandler, ActivityAwar
                 voicePlayPath = recordFile.path
                 if (recordMp3){
 
-                    val callback: IConvertCallback = object : IConvertCallback {
-                        override fun onSuccess(convertedFile: File) {
+                    val m4aPlayPath = voicePlayPath+".m4a"
+                    WavToAccConverter.convertAudio(voicePlayPath, m4aPlayPath)
 
-                            Log.d("android", "  ConvertCallback ${convertedFile.path}")
+                    val _id = call.argument<String>("id")
+                    val m1 = HashMap<String, String>()
+                    m1["id"] = _id!!
+                    m1["voicePath"] = m4aPlayPath
+                    m1["audioTimeLength"] = audioTime.toString()
+                    m1["result"] = "success"
+                    activity.runOnUiThread { channel.invokeMethod("onStop", m1) }
 
-                            val _id = call.argument<String>("id")
-                            val m1 = HashMap<String, String>()
-                            m1["id"] = _id!!
-                            m1["voicePath"] = convertedFile.path
-                            m1["audioTimeLength"] = audioTime.toString()
-                            m1["result"] = "success"
-                            activity.runOnUiThread { channel.invokeMethod("onStop", m1) }
-                        }
-
-                        override fun onFailure(error: java.lang.Exception) {
-                            Log.d("android", "  ConvertCallback $error")
-                        }
-                    }
-                    AndroidAudioConverter.with(activity.applicationContext)
-                        .setFile(recordFile)
-                        .setFormat(AudioFormat.MP3)
-                        .setCallback(callback)
-                        .convert()
+//                    val callback: IConvertCallback = object : IConvertCallback {
+//                        override fun onSuccess(convertedFile: File) {
+//
+//                            Log.d("android", "  ConvertCallback ${convertedFile.path}")
+//
+//                            val _id = call.argument<String>("id")
+//                            val m1 = HashMap<String, String>()
+//                            m1["id"] = _id!!
+//                            m1["voicePath"] = convertedFile.path
+//                            m1["audioTimeLength"] = audioTime.toString()
+//                            m1["result"] = "success"
+//                            activity.runOnUiThread { channel.invokeMethod("onStop", m1) }
+//                        }
+//
+//                        override fun onFailure(error: java.lang.Exception) {
+//                            Log.d("android", "  ConvertCallback $error")
+//                        }
+//                    }
+//                    AndroidAudioConverter.with(activity.applicationContext)
+//                        .setFile(recordFile)
+//                        .setFormat(AudioFormat.MP3)
+//                        .setCallback(callback)
+//                        .convert()
 
                 }else{
                     val _id = call.argument<String>("id")
@@ -383,29 +391,41 @@ class FlutterPluginRecordPlugin : FlutterPlugin, MethodCallHandler, ActivityAwar
             if (recordFile != null) {
                 voicePlayPath = recordFile.path
                 if (recordMp3){
-                    val callback: IConvertCallback = object : IConvertCallback {
-                        override fun onSuccess(convertedFile: File) {
+//                    Log.d("android voice  ", voicePlayPath)
 
-                            Log.d("android", "  ConvertCallback ${convertedFile.path}")
+                    val m4aPlayPath = voicePlayPath+".m4a"
+                    WavToAccConverter.convertAudio(voicePlayPath, m4aPlayPath)
 
-                            val _id = call.argument<String>("id")
-                            val m1 = HashMap<String, String>()
-                            m1["id"] = _id!!
-                            m1["voicePath"] = convertedFile.path
-                            m1["audioTimeLength"] = audioTime.toString()
-                            m1["result"] = "success"
-                            activity.runOnUiThread { channel.invokeMethod("onStop", m1) }
-                        }
-
-                        override fun onFailure(error: java.lang.Exception) {
-                            Log.d("android", "  ConvertCallback $error")
-                        }
-                    }
-                    AndroidAudioConverter.with(activity.applicationContext)
-                        .setFile(recordFile)
-                        .setFormat(AudioFormat.MP3)
-                        .setCallback(callback)
-                        .convert()
+                    val _id = call.argument<String>("id")
+                    val m1 = HashMap<String, String>()
+                    m1["id"] = _id!!
+                    m1["voicePath"] = m4aPlayPath
+                    m1["audioTimeLength"] = audioTime.toString()
+                    m1["result"] = "success"
+                    activity.runOnUiThread { channel.invokeMethod("onStop", m1) }
+//                    val callback: IConvertCallback = object : IConvertCallback {
+//                        override fun onSuccess(convertedFile: File) {
+//
+//                            Log.d("android", "  ConvertCallback ${convertedFile.path}")
+//
+//                            val _id = call.argument<String>("id")
+//                            val m1 = HashMap<String, String>()
+//                            m1["id"] = _id!!
+//                            m1["voicePath"] = convertedFile.path
+//                            m1["audioTimeLength"] = audioTime.toString()
+//                            m1["result"] = "success"
+//                            activity.runOnUiThread { channel.invokeMethod("onStop", m1) }
+//                        }
+//
+//                        override fun onFailure(error: java.lang.Exception) {
+//                            Log.d("android", "  ConvertCallback $error")
+//                        }
+//                    }
+//                    AndroidAudioConverter.with(activity.applicationContext)
+//                        .setFile(recordFile)
+//                        .setFormat(AudioFormat.MP3)
+//                        .setCallback(callback)
+//                        .convert()
 
                 }else{
                     val _id = call.argument<String>("id")
